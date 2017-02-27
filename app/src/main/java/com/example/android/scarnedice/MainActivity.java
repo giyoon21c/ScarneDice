@@ -37,19 +37,67 @@ public class MainActivity extends AppCompatActivity {
     long startTime = 0;
     //runs without a timer by reposting this handler at the end of the runnable
     Handler timerHandler = new Handler();
-    Runnable timerRunnable = new Runnable() {
+
+    /*
+    Runnable computerRollRunnable = new Runnable() {
         @Override
         public void run() {
             long millis = System.currentTimeMillis() - startTime;
             int seconds = (int) (millis / 1000);
             int minutes = seconds / 60;
             seconds = seconds % 60;
-
-            timerTextView.setText(String.format("%d:%02d", minutes, seconds));
-
-            timerHandler.postDelayed(this, 500);
+            //timerTextView.setText(String.format("%d:%02d", minutes, seconds));
+            int diceRoll = 1 + random.nextInt(DICE_SIDES);
+            timerTextView.setText("Dice rolled: " + diceRoll);
+            Log.v(TAG, "simulating computer rolling dice!!!");
+            if (diceRoll == 1) {
+                Log.v(TAG, "dice = 1 ...stopping computer rolling dice!!!");
+                timerHandler.removeCallbacks(computerRollRunnable);
+            } else {
+                Log.v(TAG, "dice = " + diceRoll);
+                timerHandler.postDelayed(this, 1000);
+            }
         }
     };
+    */
+
+    Runnable computerRollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            TextView scoreView = (TextView) findViewById(R.id.textScore);
+
+            disableRollAndHold();
+
+            int diceRoll = 1 + random.nextInt(DICE_SIDES);
+            Log.v(TAG, "beginning computer total score: " + computerOverallScore);
+            Log.v(TAG, "computer turn: rolled " + diceRoll + " computerTurnScore: " + computerTurnScore);
+            setDiceDisplay(diceRoll);
+            if (diceRoll == 1) {
+                Log.v(TAG, "computer rolled 1 - give turn to user!");
+                computerTurnScore = 0;
+                timerHandler.removeCallbacks(computerRollRunnable);
+                userTurn = true;
+                enableRollAndHold();
+            } else if (computerTurnScore + diceRoll > 20) {
+                Log.v(TAG, "computer going over >= 20, do not add but wrap up then give it to user");
+                //Toast.makeText(this, "computer going over >= 20", Toast.LENGTH_SHORT).show();
+                computerOverallScore += computerTurnScore;
+                timerHandler.removeCallbacks(computerRollRunnable);
+                userTurn = true;
+                enableRollAndHold();
+            } else {
+                computerTurnScore += diceRoll;
+                Log.v(TAG, "computerTurnScore is now " + computerTurnScore + ", " +
+                        "try another roll shortly...");
+                timerHandler.postDelayed(this, 5000);
+            }
+
+            scoreView.setText("Your score: " + userOverallScore
+                    + " computer score: " + computerOverallScore
+                    + whoseTurn() + computerTurnScore);
+        }
+    };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +105,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         timerTextView = (TextView) findViewById(R.id.timerTextView);
-
         Button b = (Button) findViewById(R.id.button);
         b.setText("start");
         b.setOnClickListener(new View.OnClickListener() {
@@ -65,15 +112,15 @@ public class MainActivity extends AppCompatActivity {
              public void onClick(View v) {
                  Button b = (Button) v;
                  if (b.getText().equals("stop")) {
-                     timerHandler.removeCallbacks(timerRunnable);
+                     timerHandler.removeCallbacks(computerRollRunnable);
                      b.setText("start");
                  } else {
                      startTime = System.currentTimeMillis();
-                     timerHandler.postDelayed(timerRunnable, 0);
+                     timerHandler.postDelayed(computerRollRunnable, 0);
                      b.setText("stop");
                  }
              }
-         });
+        });
 
         setInitialDisplay();
         setRollOnClickListener();
@@ -81,13 +128,15 @@ public class MainActivity extends AppCompatActivity {
         setResetOnClickListener();
     }
 
+
     @Override
     public void onPause() {
         super.onPause();
-        timerHandler.removeCallbacks(timerRunnable);
+        timerHandler.removeCallbacks(computerRollRunnable);
         Button b = (Button)findViewById(R.id.button);
         b.setText("start");
     }
+
 
     private void disableRollAndHold() {
         Button rollBtn = (Button) findViewById(R.id.roll);
@@ -117,32 +166,36 @@ public class MainActivity extends AppCompatActivity {
         computerTurnScore = 0;
 
         disableRollAndHold();
+
         int diceRoll = 1 + random.nextInt(DICE_SIDES);
         Log.v(TAG, "beginning computer total score: " + computerOverallScore);
         Log.v(TAG, "computer turn: 1st rolled " + diceRoll + " computerTurnScore: " + computerTurnScore);
         setDiceDisplay(diceRoll);
+        if (diceRoll == 1) {
+            Toast.makeText(this, "Computer rolled 1 - give turn to user!", Toast.LENGTH_SHORT).show();
+            computerTurnScore = 0;
+        }
 
-        while ((computerTurnScore+diceRoll < 20) && (diceRoll != 1)) {
+        while ((computerTurnScore + diceRoll < 20) && (diceRoll != 1)) {
+            //Toast.makeText(this, "Computer rolled: " + diceRoll, Toast.LENGTH_SHORT).show();
             processRoll(diceRoll);
-            /*
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            */
             diceRoll = 1 + random.nextInt(DICE_SIDES);
             setDiceDisplay(diceRoll);
-            Log.v(TAG, "computer rolled: " + diceRoll);
+            if (diceRoll == 1) {
+                Log.v(TAG, "computer rolled 1 - give turn to user!");
+                Toast.makeText(this, "Computer rolled 1 - give turn to user!", Toast.LENGTH_SHORT).show();
+                computerTurnScore = 0;
+
+            } else if (computerTurnScore + diceRoll < 20) {
+                Log.v(TAG, "computer rolled: " + diceRoll);
+            } else {
+                Log.v(TAG, "computer going over >= 20");
+                Toast.makeText(this, "computer going over >= 20", Toast.LENGTH_SHORT).show();
+            }
         }
 
         // add up the computer score before passing the control to the user
         computerOverallScore += computerTurnScore;
-
-        // computer rolled 1
-        if (diceRoll == 1) {
-            computerTurnScore = 0;
-        }
 
         scoreView.setText("Your score: " + userOverallScore
                 + " computer score: " + computerOverallScore
@@ -175,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
 
         //Log.v(TAG, "rolled :" + rollValue);
         if (userTurn) {
-            Log.v(TAG, "Update player's score - before: " + userTurnScore);
+            Log.v(TAG, "Update player's score - before: " + userTurnScore + " + " + rollValue);
             userTurnScore += rollValue;
             Log.v(TAG, "                      - after: " + userTurnScore);
 
@@ -183,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
                     + " computer score: " + computerOverallScore
                     + whoseTurn() + userTurnScore);
         } else {
-            Log.v(TAG, "Update computer's score - before: " + computerTurnScore);
+            Log.v(TAG, "Update computer's score - before: " + computerTurnScore + " + " + rollValue);
             computerTurnScore += rollValue;
             Log.v(TAG, "                        - after: " + computerTurnScore);
 
@@ -224,25 +277,38 @@ public class MainActivity extends AppCompatActivity {
         rollBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                userTurn = true;
+                Log.v(TAG, "Roll button clicked!");
                 int diceRoll = 1 + random.nextInt(DICE_SIDES);
-                Log.v(TAG, "Roll button clicked: " + diceRoll);
-                Toast.makeText(MainActivity.this, "Roll button clicked: " + diceRoll,
-                        Toast.LENGTH_SHORT)
-                        .show();
-                if (diceRoll != 1) {
-                    processRoll(diceRoll);
+                // user rolled 1
+                if (diceRoll == 1) {
+                    Toast.makeText(getApplicationContext(), "User rolled 1!",
+                            Toast.LENGTH_SHORT).show();
+                    Log.v(TAG, "User rolled 1! -> let computer roll now");
                     setDiceDisplay(diceRoll);
-                } else {
-                    Toast.makeText(getApplicationContext(), "" + whoseTurn() + " Rolled 1!", Toast.LENGTH_SHORT)
-                            .show();
-                    setDiceDisplay(1);
-
+                    // user's turn score gets wiped out!
+                    userTurnScore = 0;
                     userOverallScore += userTurnScore;
                     scoreView.setText("Your score: " + userOverallScore
                             + " computer score: " + computerOverallScore
                             + whoseTurn() + userTurnScore);
+
+                    // call computerTurn for computer to play
+                    /*
                     userTurn = false;
                     computerTurn();
+                    */
+                    computerTurnScore = 0;
+                    timerHandler.postDelayed(computerRollRunnable, 0);
+
+
+                } else {
+                    Toast.makeText(getApplicationContext(), "" + "User rolled " + diceRoll,
+                            Toast.LENGTH_SHORT).show();
+                    Log.v(TAG, "user rolled " + diceRoll);
+
+                    processRoll(diceRoll);
+                    setDiceDisplay(diceRoll);
                 }
             }
         });
@@ -255,6 +321,7 @@ public class MainActivity extends AppCompatActivity {
         holdBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                userTurn = true;
                 Log.v(TAG, "Hold button clicked");
                 Toast.makeText(MainActivity.this, "Hold button clicked!", Toast.LENGTH_SHORT)
                         .show();
@@ -265,8 +332,14 @@ public class MainActivity extends AppCompatActivity {
                         + " computer score: " + computerOverallScore
                         + whoseTurn() + userTurnScore);
 
+                // call computerTurn for computer to play
+                /*
                 userTurn = false;
                 computerTurn();
+                */
+                computerTurnScore = 0;
+                timerHandler.postDelayed(computerRollRunnable, 0);
+
 
             }
         });
