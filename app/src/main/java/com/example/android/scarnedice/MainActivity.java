@@ -1,5 +1,6 @@
 package com.example.android.scarnedice;
 
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,15 +32,61 @@ public class MainActivity extends AppCompatActivity {
 
     Random random = new Random();
 
+
+    TextView timerTextView;
+    long startTime = 0;
+    //runs without a timer by reposting this handler at the end of the runnable
+    Handler timerHandler = new Handler();
+    Runnable timerRunnable = new Runnable() {
+        @Override
+        public void run() {
+            long millis = System.currentTimeMillis() - startTime;
+            int seconds = (int) (millis / 1000);
+            int minutes = seconds / 60;
+            seconds = seconds % 60;
+
+            timerTextView.setText(String.format("%d:%02d", minutes, seconds));
+
+            timerHandler.postDelayed(this, 500);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        timerTextView = (TextView) findViewById(R.id.timerTextView);
+
+        Button b = (Button) findViewById(R.id.button);
+        b.setText("start");
+        b.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 Button b = (Button) v;
+                 if (b.getText().equals("stop")) {
+                     timerHandler.removeCallbacks(timerRunnable);
+                     b.setText("start");
+                 } else {
+                     startTime = System.currentTimeMillis();
+                     timerHandler.postDelayed(timerRunnable, 0);
+                     b.setText("stop");
+                 }
+             }
+         });
+
         setInitialDisplay();
         setRollOnClickListener();
         setHoldOnClickListener();
         setResetOnClickListener();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        timerHandler.removeCallbacks(timerRunnable);
+        Button b = (Button)findViewById(R.id.button);
+        b.setText("start");
     }
 
     private void disableRollAndHold() {
@@ -57,8 +104,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     *
-     *
      * 1. disable the roll and hold button
      * 2. Create a while loop that loops over each of the computer's turn. During each iteration of
      *    the loop:
@@ -73,17 +118,19 @@ public class MainActivity extends AppCompatActivity {
 
         disableRollAndHold();
         int diceRoll = 1 + random.nextInt(DICE_SIDES);
+        Log.v(TAG, "beginning computer total score: " + computerOverallScore);
         Log.v(TAG, "computer turn: 1st rolled " + diceRoll + " computerTurnScore: " + computerTurnScore);
-        Log.v(TAG, "display dice with value: " + diceRoll);
         setDiceDisplay(diceRoll);
 
-        while ((computerTurnScore < 20) && (diceRoll != 1)) {
+        while ((computerTurnScore+diceRoll < 20) && (diceRoll != 1)) {
             processRoll(diceRoll);
+            /*
             try {
                 Thread.sleep(2000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            */
             diceRoll = 1 + random.nextInt(DICE_SIDES);
             setDiceDisplay(diceRoll);
             Log.v(TAG, "computer rolled: " + diceRoll);
@@ -97,10 +144,12 @@ public class MainActivity extends AppCompatActivity {
             computerTurnScore = 0;
         }
 
-        Log.v(TAG, "give the turn to user!");
         scoreView.setText("Your score: " + userOverallScore
                 + " computer score: " + computerOverallScore
                 + whoseTurn() + computerTurnScore);
+
+        userTurn = true;
+        Log.v(TAG, "give the turn to user!");
         enableRollAndHold();
     }
 
@@ -124,10 +173,11 @@ public class MainActivity extends AppCompatActivity {
     private void processRoll(int rollValue) {
         TextView scoreView = (TextView) findViewById(R.id.textScore);
 
+        //Log.v(TAG, "rolled :" + rollValue);
         if (userTurn) {
             Log.v(TAG, "Update player's score - before: " + userTurnScore);
             userTurnScore += rollValue;
-            Log.v(TAG, "Update player's score - after: " + userTurnScore);
+            Log.v(TAG, "                      - after: " + userTurnScore);
 
             scoreView.setText("Your score: " + userOverallScore
                     + " computer score: " + computerOverallScore
@@ -135,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Log.v(TAG, "Update computer's score - before: " + computerTurnScore);
             computerTurnScore += rollValue;
-            Log.v(TAG, "Update computer's score - after: " + computerTurnScore);
+            Log.v(TAG, "                        - after: " + computerTurnScore);
 
             scoreView.setText("Your score: " + userOverallScore
                     + " computer score: " + computerOverallScore
