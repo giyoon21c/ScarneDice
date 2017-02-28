@@ -38,28 +38,28 @@ public class MainActivity extends AppCompatActivity {
     //runs without a timer by reposting this handler at the end of the runnable
     Handler timerHandler = new Handler();
 
-    /*
-    Runnable computerRollRunnable = new Runnable() {
+    /**
+     * This Runnable tests the basic handler function to stop when dice rolled is 1
+     */
+    Runnable tmpRunnable = new Runnable() {
         @Override
         public void run() {
-            long millis = System.currentTimeMillis() - startTime;
-            int seconds = (int) (millis / 1000);
-            int minutes = seconds / 60;
-            seconds = seconds % 60;
-            //timerTextView.setText(String.format("%d:%02d", minutes, seconds));
+            Button b = (Button) findViewById(R.id.button);
+
             int diceRoll = 1 + random.nextInt(DICE_SIDES);
             timerTextView.setText("Dice rolled: " + diceRoll);
             Log.v(TAG, "simulating computer rolling dice!!!");
             if (diceRoll == 1) {
                 Log.v(TAG, "dice = 1 ...stopping computer rolling dice!!!");
                 timerHandler.removeCallbacks(computerRollRunnable);
+                b.setText("start");
             } else {
                 Log.v(TAG, "dice = " + diceRoll);
                 timerHandler.postDelayed(this, 1000);
             }
         }
     };
-    */
+
 
     Runnable computerRollRunnable = new Runnable() {
         @Override
@@ -78,26 +78,31 @@ public class MainActivity extends AppCompatActivity {
                 timerHandler.removeCallbacks(computerRollRunnable);
                 userTurn = true;
                 enableRollAndHold();
+                scoreView.setText("Your score: " + userOverallScore
+                        + " computer score: " + computerOverallScore
+                        + " computer rolled a ONE!");
             } else if (computerTurnScore + diceRoll > 20) {
-                Log.v(TAG, "computer going over >= 20, do not add but wrap up then give it to user");
+                Log.v(TAG, "computer going over > 20, do not add but wrap up then give it to user");
                 //Toast.makeText(this, "computer going over >= 20", Toast.LENGTH_SHORT).show();
                 computerOverallScore += computerTurnScore;
                 timerHandler.removeCallbacks(computerRollRunnable);
                 userTurn = true;
                 enableRollAndHold();
+                scoreView.setText("Your score: " + userOverallScore
+                        + " computer score: " + computerOverallScore
+                        + " computer holds at " + computerTurnScore);
             } else {
                 computerTurnScore += diceRoll;
                 Log.v(TAG, "computerTurnScore is now " + computerTurnScore + ", " +
                         "try another roll shortly...");
-                timerHandler.postDelayed(this, 5000);
+                scoreView.setText("Your score: " + userOverallScore
+                        + " computer score: " + computerOverallScore
+                        + " computer draws: " + diceRoll
+                        + " turn score: " + computerTurnScore);
+                timerHandler.postDelayed(this, 3000);
             }
-
-            scoreView.setText("Your score: " + userOverallScore
-                    + " computer score: " + computerOverallScore
-                    + whoseTurn() + computerTurnScore);
         }
     };
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,11 +117,11 @@ public class MainActivity extends AppCompatActivity {
              public void onClick(View v) {
                  Button b = (Button) v;
                  if (b.getText().equals("stop")) {
-                     timerHandler.removeCallbacks(computerRollRunnable);
+                     timerHandler.removeCallbacks(tmpRunnable);
                      b.setText("start");
                  } else {
                      startTime = System.currentTimeMillis();
-                     timerHandler.postDelayed(computerRollRunnable, 0);
+                     timerHandler.postDelayed(tmpRunnable, 0);
                      b.setText("stop");
                  }
              }
@@ -294,13 +299,8 @@ public class MainActivity extends AppCompatActivity {
                             + whoseTurn() + userTurnScore);
 
                     // call computerTurn for computer to play
-                    /*
-                    userTurn = false;
-                    computerTurn();
-                    */
                     computerTurnScore = 0;
                     timerHandler.postDelayed(computerRollRunnable, 0);
-
 
                 } else {
                     Toast.makeText(getApplicationContext(), "" + "User rolled " + diceRoll,
@@ -333,14 +333,8 @@ public class MainActivity extends AppCompatActivity {
                         + whoseTurn() + userTurnScore);
 
                 // call computerTurn for computer to play
-                /*
-                userTurn = false;
-                computerTurn();
-                */
                 computerTurnScore = 0;
                 timerHandler.postDelayed(computerRollRunnable, 0);
-
-
             }
         });
     }
